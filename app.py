@@ -199,3 +199,52 @@ if st.button("🚀 Execute Backtest", use_container_width=True):
         )
         st.session_state.backtest_process.start()
         st.session_state.backtest_status = "running"
+status_placeholder = st.empty()
+
+if st.session_state.backtest_status == "running":
+    with status_placeholder.container():
+        with st.spinner(""):
+            st.markdown(
+                f"<div style='color: white; text-align: center; margin: 2rem 0;'>"
+                f"⚡ Processing backtest for all trained assets...<br>"
+                f"Estimated completion in 4-5 minutes"
+                f"</div>", 
+                unsafe_allow_html=True
+            )
+            while st.session_state.backtest_process.is_alive():
+                time.sleep(1)
+            st.session_state.backtest_process.join()
+            if not st.session_state.results_queue.empty():
+                result = st.session_state.results_queue.get()
+                if result["status"] == "success":
+                    status_placeholder.success("✅ Backtest completed successfully!")
+                    st.balloons()
+                else:
+                    status_placeholder.error(f"❌ Backtest failed: {result['message']}")
+                st.session_state.backtest_status = "ready"
+            else:
+                status_placeholder.error("⚠️ Backtest process terminated unexpectedly")
+                st.session_state.backtest_status = "ready"
+
+st.markdown("---")
+st.subheader("About the ARIMA Trading Strategy")
+st.write("""
+The ARIMA trading strategy works as follows:
+
+1. **Stock Selection**: The bot analyzes all selected stocks and chooses the one with the strongest 
+   predicted price movement (either up or down).
+
+2. **Position Sizing**: The bot calculates the appropriate position size based on the available cash 
+   and configured risk level.
+
+3. **Order Execution**: 
+   - If the price is predicted to rise, the bot places a buy order
+   - If the price is predicted to fall, the bot places a sell order
+   
+4. **Risk Management**: Each order includes:
+   - Take-profit level (20% gain for long positions, 20% drop for short positions)
+   - Stop-loss level (5% loss for long positions, 5% gain for short positions)
+
+5. **Position Management**: The bot closes existing positions before opening new ones in a different 
+   direction or on a different stock.
+""")
