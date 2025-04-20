@@ -148,3 +148,54 @@ def run_backtest(queue):
 
     except Exception as e:
         queue.put({"status": "error", "message": str(e)})
+        
+# Streamlit UI
+st.title("SuperAlgos.ai - ARIMA Trading Bot")
+
+st.write("""
+This trading bot uses ARIMA models to forecast stock prices and automatically trade the stock 
+with the strongest predicted price movement. The strategy implements bracket orders with 
+take-profit and stop-loss levels to manage risk.
+""")
+
+st.header("Trained Assets")
+cols = st.columns(4)
+for idx, (symbol, (name, start, end)) in enumerate(symbols.items()):
+    with cols[idx % 4]:
+        st.subheader(f"{name}")
+        st.caption(f"**Ticker:** {symbol}")
+        st.caption(f"**Training Period:**\n{start} to {end}")
+
+# Bot information
+st.write("""  
+**Risk Parameters:**  
+- 50% cash-at-risk per trade  
+- Daily rebalancing  
+- Automatic position closure on new signals   
+""")
+
+# Session state initialization
+if 'backtest_process' not in st.session_state:
+    st.session_state.backtest_process = None
+if 'results_queue' not in st.session_state:
+    st.session_state.results_queue = Queue()
+if 'backtest_status' not in st.session_state:
+    st.session_state.backtest_status = "ready"
+
+if st.button("🚀 Execute Backtest", use_container_width=True):
+
+    missing_models = []
+    for symbol in symbols:
+        model_file = f"./Models/arima_model_{symbol.lower()}.pkl"
+        if not os.path.exists(model_file):
+            missing_models.append(symbol)
+    if missing_models:
+        st.error(f"Missing models for: {', '.join(missing_models)}")
+    else:
+        st.session_state.results_queue = Queue()
+        st.session_state.backtest_process = Process(
+            target=run_backtest,
+            args=(st.session_state.results_queue,)
+        )
+        st.session_state.backtest_process.start()
+        st.session_state.backtest_status = "running"
