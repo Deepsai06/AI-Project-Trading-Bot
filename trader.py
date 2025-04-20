@@ -55,3 +55,71 @@ class ARIMAStrategy(Strategy):
         pct_change = (predicted_price - last_price) / last_price
         return pct_change, last_price
 
+    def select_best_stock(self):
+        best_symbol = None
+        best_abs_change = 0
+        best_pct_change = 0
+        best_last_price = 0
+
+        for symbol in self.symbols:
+            try:
+                pct_change, last_price = self.forecast_pct_change(symbol)
+                if abs(pct_change) > best_abs_change:
+                    best_abs_change = abs(pct_change)
+                    best_symbol = symbol
+                    best_pct_change = pct_change
+                    best_last_price = last_price
+            except Exception as e:
+                print(f"Error forecasting {symbol}: {e}")
+                continue
+
+        return best_symbol, best_pct_change, best_last_price
+
+    def on_trading_iteration(self):
+        best_symbol, pct_change, last_price = self.select_best_stock()
+        if best_symbol is None or last_price == 0:
+            return
+
+        cash, last_price, quantity = self.position_sizing(best_symbol)
+        if cash < last_price or quantity < 1:
+            return
+
+        if pct_change > 0:
+            order_type = "buy"
+            tp_price = last_price * 1.20
+            sl_price = last_price * 0.95
+        else:
+            order_type = "sell"
+            tp_price = last_price * 0.80
+            sl_price = last_price * 1.05
+
+        
+        if self.last_trade and (self.last_trade != order_type or self.last_trade_symbol != best_symbol):
+            self.sell_all()
+
+        order = self.create_order(
+            best_symbol,
+            quantity,
+            order_type,
+            type="bracket",
+            take_profit_price=tp_price,
+            stop_loss_price=sl_price
+        )
+        self.submit_order(order)
+        self.last_trade = order_type
+        self.last_trade_symbol = best_symbol
+
+
+backtest_start = min(datetime.strptime(v[0], "%Y-%m-%d") for v in symbols.values())
+backtest_end = max(datetime.strptime(v[1], "%Y-%m-%d") for v in symbols.values())
+
+broker = Alpaca(config.ALPACA_CREDS)
+strategy = ARIMAStrategy(
+    name="arima_backtest_multi_stock",
+    broker=broker
+)
+strategy.backtest(
+    YahooDataBacktesting,
+    backtest_start,
+    backtest_end
+)
