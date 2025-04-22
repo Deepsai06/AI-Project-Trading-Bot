@@ -10,17 +10,6 @@ import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-st.markdown("""
-<style>
-.stSpinner > div > div {
-    border-top-color: white !important;
-    border-left-color: white !important;
-}
-.stSpinner > div {
-    color: white !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 symbols = {
     "ACGL": ("Arch Capital Group", "2015-04-29", "2017-11-10"),
