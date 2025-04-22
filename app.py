@@ -145,22 +145,20 @@ def run_backtest(queue):
             show_tearsheet = False,
             save_tearsheet = False
         )
-        
+        tearsheet_html = results.get_tearsheet()
+        encoded_html = base64.b64encode(tearsheet_html.encode()).decode()
         queue.put({
             "status": "success",
-            "tearsheet": results.get_tearsheet(),
+            "tearsheet": encoded_html,
             "stats": results.get_stats()
         })
 
     except Exception as e:
         queue.put({"status": "error", "message": str(e)})
 
-def display_tearsheet(html_content):
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".html") as f:
-        f.write(html_content)
-        st.markdown(f"""
-            <iframe src="file://{f.name}" width="100%" height="800px"></iframe>
-        """, unsafe_allow_html=True)
+ef display_tearsheet(encoded_html):
+    decoded_html = base64.b64decode(encoded_html).decode()
+    components.html(decoded_html, height=800, scrolling=True)
 
 
 # Streamlit UI
@@ -234,8 +232,6 @@ if st.session_state.backtest_status == "running":
                     status_placeholder.success("✅ Backtest completed successfully!")
                     st.balloons()
                     display_tearsheet(result["tearsheet"])
-                    st.subheader("Performance Statistics")
-                    st.write(result["stats"])
                 else:
                     status_placeholder.error(f"❌ Backtest failed: {result['message']}")
                 st.session_state.backtest_status = "ready"
