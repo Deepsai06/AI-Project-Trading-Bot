@@ -144,11 +144,23 @@ def run_backtest(queue):
             backtest_end
         )
         
-        queue.put({"status": "success"})
+        queue.put({
+            "status": "success",
+            "tearsheet": results.get_tearsheet(),
+            "stats": results.get_stats()
+        })
 
     except Exception as e:
         queue.put({"status": "error", "message": str(e)})
-        
+
+def display_tearsheet(html_content):
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".html") as f:
+        f.write(html_content)
+        st.markdown(f"""
+            <iframe src="file://{f.name}" width="100%" height="800px"></iframe>
+        """, unsafe_allow_html=True)
+
+
 # Streamlit UI
 st.title("SuperAlgos.ai - ARIMA Trading Bot")
 
@@ -219,6 +231,9 @@ if st.session_state.backtest_status == "running":
                 if result["status"] == "success":
                     status_placeholder.success("✅ Backtest completed successfully!")
                     st.balloons()
+                    isplay_tearsheet(result["tearsheet"])
+                    st.subheader("Performance Statistics")
+                    st.write(result["stats"])
                 else:
                     status_placeholder.error(f"❌ Backtest failed: {result['message']}")
                 st.session_state.backtest_status = "ready"
