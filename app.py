@@ -138,10 +138,12 @@ def run_backtest(queue):
             broker=broker
         )
         
-        strategy.backtest(
+        results = strategy.backtest(
             YahooDataBacktesting,
             backtest_start,
-            backtest_end
+            backtest_end,
+            show_tearsheet = False,
+            save_tearsheet = False
         )
         
         queue.put({
@@ -231,7 +233,7 @@ if st.session_state.backtest_status == "running":
                 if result["status"] == "success":
                     status_placeholder.success("✅ Backtest completed successfully!")
                     st.balloons()
-                    isplay_tearsheet(result["tearsheet"])
+                    display_tearsheet(result["tearsheet"])
                     st.subheader("Performance Statistics")
                     st.write(result["stats"])
                 else:
